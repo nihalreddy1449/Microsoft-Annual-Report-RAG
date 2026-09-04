@@ -15,6 +15,12 @@
 # ---- Step 3: ingestion / parsing ----
 unstructured[docx]>=0.16
 lxml>=5.0
+# Pulled in by unstructured, but pinned explicitly because its wheel can
+# install as metadata only - a .dist-info directory with no langdetect/
+# package beside it. pip then reports it satisfied and `pip freeze` lists it,
+# while `import langdetect` fails. If that happens:
+#   pip install --force-reinstall --no-cache-dir langdetect
+langdetect>=1.0.9
 
 # ---- Steps 5-6: embeddings + vector store ----
 # sentence-transformers serves both bge-base-en-v1.5 (embeddings)
