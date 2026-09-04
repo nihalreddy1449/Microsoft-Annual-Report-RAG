@@ -1,0 +1,45 @@
+# ---- Secrets (never commit) ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Project artifacts ----
+# Derived outputs - regenerable from data/raw/, so not tracked.
+data/processed/*
+chroma_db/
+*.sqlite3
+.cache/
+
+# NOTE: data/raw/ IS tracked on purpose - the 6 source .docx files are
+# the corpus and committing them protects against another laptop-loss.
+
+# ---- Tooling ----
+.pytest_cache/
+.ipynb_checkpoints/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+!data/processed/.gitkeep
