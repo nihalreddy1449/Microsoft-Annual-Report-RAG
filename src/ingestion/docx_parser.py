@@ -69,6 +69,7 @@ _YEAR_RE = re.compile(r"(20\d{2})")
 
 MAX_HEADING_CHARS = 90
 MIN_HEADING_ALPHA = 3
+BULLET = "•"
 
 # A wrapped heading's first half ends on one of these; a complete heading does not.
 _DANGLING_WORDS = {
@@ -90,6 +91,7 @@ class Element:
     subsection: str | None = None  # owning H2
     level: int | None = None  # 1 or 2, headings only
     rows: list[list[str]] | None = None  # tables only
+    list_group: int | None = None  # shared id across a lead-in and its bullets
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -166,6 +168,48 @@ def _looks_like_heading(text: str) -> bool:
     if _CAPTION_RE.match(text):
         return False
     return sum(c.isalpha() for c in text) >= MIN_HEADING_ALPHA
+
+
+def _annotate_list_groups(elements: list[Element]) -> None:
+    """Tag each bullet run, plus the sentence introducing it, with a shared id.
+
+    These documents carry no Word list numbering (<w:numPr> appears zero times
+    in all six files); bullets are literal characters, one per paragraph. So an
+    item can never be split mid-item. The risk is subtler: a bullet is often
+    meaningless without its lead-in - "Growth of the AI PC category." only
+    means something under "The Windows operating system is designed to ...".
+
+    Marking the group lets the chunkers keep it whole, the same way tables are
+    kept whole, so the semantic chunker cannot sever a bullet from its context
+    or split a nine-item run down the middle.
+    """
+    group_id = 0
+    index = 0
+    while index < len(elements):
+        el = elements[index]
+        if el.kind == "paragraph" and el.text.lstrip().startswith(BULLET):
+            group_id += 1
+            # Walk back one paragraph to pick up the introducing sentence.
+            start = index
+            previous = elements[index - 1] if index else None
+            if (
+                previous is not None
+                and previous.kind == "paragraph"
+                and not previous.text.lstrip().startswith(BULLET)
+            ):
+                start = index - 1
+            end = index
+            while (
+                end < len(elements)
+                and elements[end].kind == "paragraph"
+                and elements[end].text.lstrip().startswith(BULLET)
+            ):
+                end += 1
+            for member in elements[start:end]:
+                member.list_group = group_id
+            index = end
+        else:
+            index += 1
 
 
 def _ends_dangling(text: str) -> bool:
@@ -326,6 +370,7 @@ def parse_docx(path: str | Path) -> Document:
             )
         )
 
+    _annotate_list_groups(doc.elements)
     return doc
 
 

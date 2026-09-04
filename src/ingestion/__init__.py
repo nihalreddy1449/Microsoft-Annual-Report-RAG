@@ -1,1 +1,1 @@
-"""docx parsing via unstructured + custom heading detection"""
+"""docx parsing: stdlib WordprocessingML reader + formatting-based heading detector."""

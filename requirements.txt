@@ -13,14 +13,14 @@
 # Verify with: python scripts/check_env.py
 
 # ---- Step 3: ingestion / parsing ----
-unstructured[docx]>=0.16
-lxml>=5.0
-# Pulled in by unstructured, but pinned explicitly because its wheel can
-# install as metadata only - a .dist-info directory with no langdetect/
-# package beside it. pip then reports it satisfied and `pip freeze` lists it,
-# while `import langdetect` fails. If that happens:
-#   pip install --force-reinstall --no-cache-dir langdetect
-langdetect>=1.0.9
+# No parsing library. src/ingestion/docx_parser.py reads WordprocessingML
+# with the standard library (zipfile + xml.etree), because `unstructured` -
+# originally chosen for this step - returns zero Title elements on this
+# corpus. These files are EDGAR HTML-to-docx conversions with no Word heading
+# styles, and unstructured infers Title from style names. Measured on FY2025:
+# 980 elements (458 NarrativeText, 270 Text, 100 ListItem, 69 Table, 0 Title)
+# in 59s per document. It cannot support the structure-aware chunking arm.
+# See the docstring in src/ingestion/docx_parser.py for the full evidence.
 
 # ---- Steps 5-6: embeddings + vector store ----
 # sentence-transformers serves both bge-base-en-v1.5 (embeddings)

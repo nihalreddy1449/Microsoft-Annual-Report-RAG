@@ -73,8 +73,9 @@ def check_imports() -> bool:
     only and is always coerced to str.
     """
     # (import name, distribution name, purpose)
+    # No parsing library: docx parsing uses the standard library, see
+    # src/ingestion/docx_parser.py.
     packages = [
-        ("unstructured", "unstructured", "docx parsing"),
         ("sentence_transformers", "sentence-transformers", "bge embeddings + reranker"),
         ("transformers", "transformers", "model backend"),
         ("chromadb", "chromadb", "vector store"),
