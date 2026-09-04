@@ -9,8 +9,9 @@
 This is a Retrieval-Augmented Generation (RAG) system built over Microsoft's own Annual Reports for fiscal years 2020–2025 (six `.docx` files), built by Nihal — a B.Tech CSE (AI) student — specifically to strengthen his resume/portfolio. The full architecture has been decided end-to-end across 9 build steps (parsing → chunking → embeddings → vector store → retrieval → reranking → generation → evaluation → interface), with only deployment left genuinely open. The repo scaffold already exists on disk and the 6 raw files are in place — but **no code has been written yet**. This is a pure planning-to-build handoff.
 
 - **Main goal:** a resume-differentiating RAG project anchored on a defensible, *measured* ablation study — not just a working demo.
-- **Current phase:** all architecture decisions locked (steps 1–9); zero code written; repo scaffold + raw data already on disk.
-- **Immediate next step:** implement Step 1 — docx ingestion/parsing with `unstructured` on the 6 annual report files.
+- **Current phase:** Step 0 (environment, git, GitHub) and Step 1 (ingestion) are **built and verified**. Eval set written. Next up is chunking.
+- **Immediate next step:** implement the three chunking strategies (`src/chunking/`) over `data/processed/*.json`.
+- **Reversed decision — do not re-propose:** `unstructured` is **no longer** the parser. It returns zero headings on this corpus; see §3 Parsing. Nothing in the pipeline imports it and it is not in `requirements.txt`.
 - **Biggest pitfall to avoid:** the corpus went through several reversals (MS MARCO → power-systems/IEEE papers → Wikipedia → engineering blogs → **Microsoft Annual Reports, FINAL**). Do not suggest reverting to or re-litigating any earlier corpus option.
 - **Second pitfall:** don't fabricate or reuse the "71% → 86% → 91%" example numbers from a chart Nihal liked — that was a *style* reference for how to present an ablation table, not a target to hit. Real numbers must come from actually running the evaluation harness.
 
@@ -42,7 +43,7 @@ ms-annual-report-rag/
 │   ├── raw/              # original .docx files — POPULATED, see below
 │   └── processed/        # parsed/chunked outputs — not yet populated
 ├── src/
-│   ├── ingestion/        # unstructured parsing logic — not yet written
+│   ├── ingestion/        # docx_parser.py — BUILT (stdlib XML parser + heading detector)
 │   ├── chunking/         # fixed / structure-aware / semantic strategies — not yet written
 │   ├── embedding/        # bge-base-en-v1.5 wrapper — not yet written
 │   ├── retrieval/        # BM25 + vector hybrid + RRF — not yet written
@@ -74,7 +75,7 @@ ms-annual-report-rag/
 
 | Component | Choice |
 |---|---|
-| Parsing | `unstructured` (docx partitioning) |
+| Parsing | **Custom WordprocessingML parser** (stdlib `zipfile` + `xml.etree`) — `unstructured` was evaluated and rejected, see §3 |
 | Chunking | Custom: fixed-size + structure-aware (heading-based) + semantic (embedding-boundary-based) |
 | Embeddings | `bge-base-en-v1.5` (BAAI), local |
 | Vector store | `Chroma` (embedded, local, metadata filtering by fiscal year/section) |
@@ -94,7 +95,9 @@ ms-annual-report-rag/
 - Public tech company engineering blogs (Netflix, Uber, Stripe, Airbnb, Meta, etc.) — briefly locked in with a full pipeline plan built around it, then he proposed switching to Microsoft's own filings instead.
 - **FINAL: Microsoft's Annual Reports only, FY2020–FY2025 (6 documents), `.docx`.** Chosen because it enables genuine temporal/multi-document reasoning and forces real table/numeric-data handling (financial statements) — a more rigorous single-company story than the blogs idea, even though it's a harder build (small, repetitive corpus; heavy tables). **Do not suggest reverting to any earlier corpus option.**
 
-**Parsing:** `unstructured`, chosen over raw `python-docx` or Mammoth+custom table parsing — gives element-aware, reading-order-preserved output (titles/narrative/tables/lists as distinct types), which matters since annual reports interleave dense prose with financial tables.
+**Parsing — REVERSED on 2026-09-04, do not re-propose `unstructured`.** It was originally chosen for element-aware, reading-order-preserved output (titles/narrative/tables/lists as distinct types). Measured against the actual files, it cannot deliver the one thing it was chosen for. On FY2025 it returns **980 elements — 458 NarrativeText, 270 Text, 100 ListItem, 69 Table, and zero `Title`** — in 59 seconds per document. It infers `Title` largely from Word style names, and these six files are EDGAR HTML-to-docx conversions whose every paragraph carries a presentational style (`NormalWeb`, `la2`, `rrdsinglerule`); there is no heading style anywhere in the corpus. With no headings, the structure-aware arm of the ablation cannot be built on it.
+
+Replaced by a **custom WordprocessingML parser** (`src/ingestion/docx_parser.py`, stdlib only) that recovers headings from the formatting the filing agent did leave behind. Full bolding separates a heading from body text; centring then separates a true section from a bold subsection. Font size does **not** discriminate — `INCOME STATEMENTS` (H1) and `OVERVIEW` (H2) are both `sz=20`. Yields 19–20 sections and ~200 subsections per document, all six parsed in **1.05s**. The interview-defensible framing is the measurement, not the library: *"I evaluated `unstructured`, measured that it returns zero headings on EDGAR conversions, and built a formatting-based detector instead."*
 
 **Chunking — the deliberate centerpiece of the project.** A 3-way ablation (inspired by a chart Nihal liked showing "Fixed 71% → Semantic 86% → +Reranker 91%," used only as a *presentation style* reference):
 1. Fixed-size chunking (baseline, ignores structure)
@@ -124,19 +127,40 @@ A reranker is then added on top of whichever performs best, producing a 4th data
 
 **Workflow:** Explicitly "GitHub style" — proper repo structure (already created), incremental/meaningful commits per step rather than one giant end-of-project commit, optional branch-per-experiment for the ablation variants, secrets via `.env` (never hardcoded/committed), and a README written progressively.
 
+## 3a. Locked Methodology Decisions (approved 2026-09-04)
+
+Six decisions raised from evidence found in the actual files, and approved via Nihal's planning chat. These are **locked** — implement them, don't re-litigate them.
+
+1. **Structure-aware chunking uses the custom heading detector** (bold + ALL-CAPS + centred, excluding table-internal paragraphs). Forced by the absence of heading styles. **Implemented.**
+2. **recall@k is scored by span containment, not gold chunk IDs.** Each eval question carries verbatim gold spans; a retrieval hits if any retrieved chunk contains any span. This is the only scheme that stays comparable across three chunkers with different boundaries. **Implemented in the eval set.**
+3. **Tables are linearized row-wise into self-describing sentences** for embedding ("FY2025 Total revenue: $281,724 million"), with the original table kept in metadata for display and citation. Do not embed HTML or markdown markup. *Pending — Step 4.*
+4. **Tables are atomic in all three chunking strategies** — never split. Only prose chunking varies between arms, so the ablation has exactly one independent variable. *Pending — Step 4.*
+   - **Extended to lists.** These documents have no Word list numbering (`<w:numPr>` appears zero times); bullets are literal characters, one per paragraph, so an item cannot be split mid-item. But a bullet is meaningless without its lead-in ("Growth of the AI PC category." under "The Windows operating system is designed to..."). The parser therefore tags each bullet run **and its introducing sentence** with a shared `list_group` id. Chunkers must keep a group whole.
+5. **The LLM judge must be a different Groq model than the generator**, to avoid self-preference bias. `.env` carries `GROQ_MODEL` and `GROQ_JUDGE_MODEL` separately. *Pending — Step 11.*
+6. **Eval questions stay within FY2020–FY2025.** The faculty tier examples referenced FY2026, which does not exist in the corpus; only the Unanswerable tier may reference it. **Implemented.**
+
+**Known constraint for Step 4 (table linearization).** Table headers and data rows do **not** align positionally. HTML `colspan` artifacts leave empty padding cells and put `$` in its own cell, so on the FY2025 income statement the header row has 10 cells while the `Revenue` row has 13, and naive positional mapping pairs `'2025'` with `'$'`. Dropping empty cells and bare currency symbols before aligning fixes the important cases (measured: 76.5% of 1,385 data rows align cleanly), but **23.5% remain ragged** and include genuine two-row headers — e.g. the FY2020 stockholders' equity table, where row 0 is `Shares | Amount | Shares | Amount | Shares | Amount` and the years `2020 | 2019 | 2018` appear in row 1 *below* it. Spot-check linearized output against the source before trusting any number.
+
 ## 4. Problems Encountered & Solutions
 
-No code has been written yet, so there are no technical bugs/fixes to report. The closest thing to a "problem" in this project's history: Nihal lost his prior project's files when switching laptops, which is what triggered the corpus restart from Wikipedia onward. Practical takeaway: git commits + pushing to GitHub early (now part of the plan) should prevent a repeat of this.
+The laptop-switch file loss that triggered the corpus restart is now mitigated: the repo is on GitHub (private, `nihalreddy1449/Microsoft-Annual-Report-RAG`) with the six `.docx` tracked.
+
+Technical problems hit and solved so far:
+
+- **`unstructured` returns zero headings** — the parser reversal in §3. Root cause: no Word heading styles in EDGAR HTML-to-docx conversions.
+- **Blackwell GPU needs a specific torch build** — the RTX 5050 is `sm_120`. A default PyPI wheel can install cleanly, report `cuda.is_available() == True`, and fail on the first kernel launch. Fixed by installing from the CUDA 12.8 index. `scripts/check_env.py` verifies by forcing a real GPU matmul, not by trusting `is_available()`.
+- **`langdetect` installed as metadata only** — a cached wheel produced a `.dist-info` with no package beside it, so pip reported it satisfied while `import langdetect` failed. `--no-cache-dir` fixed it. Moot now that `unstructured` is gone, but the failure mode is worth recognising.
+- **Heading detector false starts** — "no explicit `<w:sz>`" as the H1 rule lost every financial statement; merging any two adjacent H1s welded `FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA` onto `INCOME STATEMENTS`. Both caught by the validation harness, not by inspection.
+- **A live API key was pasted into `.env.example`** (the committed template). Caught before any commit existed; key rotated, `.env` verified absent from the remote.
 
 ## 5. Current Status
 
-- **Decisions:** All of build steps 1–9 are locked (Section 3). Step 10 (deployment) is explicitly deferred.
-- **Repo scaffold:** Created on disk exactly per the structure in Section 2.
-- **Data:** All 6 raw `.docx` annual report files are in place in `data/raw/`.
-- **Code:** None written yet — no ingestion script, no chunking implementations, no embedding pipeline, no retrieval/reranking/generation code, no eval harness, no Gradio app, no `requirements.txt` / `.env.example` / `.gitignore` / `README.md`.
-- **Eval question set:** Only the 6-tier framework and one example question per tier exist (Section 6) — the actual ~30-question set has not been written yet.
-
-This is a pure planning-to-build handoff — everything in Section 8 is still ahead.
+- **Decisions:** Build steps 1–9 locked (§3), plus six methodology decisions (§3a). Step 10 (deployment) deferred.
+- **Environment:** venv on Python 3.13.14; torch 2.11.0+cu128 verified on `sm_120` with a real GPU matmul; all dependencies importing. `scripts/check_env.py` reports "Environment ready."
+- **Git/GitHub:** repo initialised, pushed to a **private** GitHub repo. `.env` gitignored and verified absent from the remote; `.env.example` holds placeholders only.
+- **Step 1 ingestion — BUILT AND VERIFIED.** `src/ingestion/docx_parser.py` parses all six files in ~1.05s into `data/processed/FY20XX.json`: 19–20 H1 sections, ~200 H2 subsections, 69–76 tables per document. Two guards: `scripts/run_ingestion.py` (required sections present, no subsection promoted to H1, BUSINESS/MD&A keep their bulk) and `scripts/check_gold_spans.py` (**49/49** eval gold spans still findable after parsing).
+- **Eval question set — WRITTEN.** `eval_data/questions.json`: 30 questions, exactly 5 per tier, 25 answerable + 5 refusal, 49 verbatim gold spans, every span validated against the corpus and every unanswerable question validated in reverse.
+- **Not yet written:** chunking, embedding, vector store, retrieval, reranking, generation, eval harness, Gradio app, README.
 
 ## 6. Terminology & Conventions
 
@@ -165,10 +189,11 @@ This is a pure planning-to-build handoff — everything in Section 8 is still ah
 
 ## 8. Next Steps
 
-1. Initialize git (if not already done); make an initial commit of the existing scaffold + raw data files.
-2. Create `requirements.txt`, `.env.example` (with a `GROQ_API_KEY` placeholder), and `.gitignore` (exclude `.env`, `__pycache__`, venv folders).
-3. Implement docx ingestion/parsing (`src/ingestion/`) using `unstructured` on all 6 files — normalize the `2025_AnnualReport.docx` filename inconsistency, extract structured elements (titles, narrative, tables, lists) with reading order and fiscal-year metadata attached.
-4. Implement the three chunking strategies (`src/chunking/`): fixed-size, structure-aware, semantic — swappable/comparable, not hardwired to one.
+1. ~~Initialize git; make an initial commit of the scaffold + raw data files.~~ **DONE** — pushed to a private GitHub repo.
+2. ~~Create `requirements.txt`, `.env.example`, `.gitignore`.~~ **DONE** — plus `requirements.lock.txt` for reproducibility and `scripts/check_env.py` for GPU/dependency verification.
+3. ~~Implement docx ingestion/parsing (`src/ingestion/`).~~ **DONE** — custom stdlib parser, not `unstructured` (§3). Filename inconsistency handled by matching the year rather than special-casing `2025_AnnualReport.docx`. Output in `data/processed/FY20XX.json` with reading order, H1/H2 section path, fiscal-year metadata, raw table rows, and `list_group` ids.
+3b. ~~Write the ~30-question eval set.~~ **DONE** — `eval_data/questions.json`, span-validated both directions.
+4. **NEXT — implement the three chunking strategies** (`src/chunking/`): fixed-size, structure-aware, semantic — swappable/comparable, not hardwired to one. Must honour decisions 3, 4 and the table-alignment constraint in §3a.
 5. Implement embedding generation (`src/embedding/`) with `bge-base-en-v1.5`.
 6. Implement Chroma ingestion — store chunk embeddings with metadata (fiscal year, section, source file).
 7. Implement hybrid retrieval (`src/retrieval/`): BM25 (`rank_bm25`) + Chroma vector search, fused via Reciprocal Rank Fusion.
@@ -185,7 +210,12 @@ This is a pure planning-to-build handoff — everything in Section 8 is still ah
 
 ## 9. Open Questions
 
-- The exact ~30 eval questions still need to be written — only 6 examples exist (one per tier). Worth confirming with Nihal whether to draft these together or have Claude Code produce a first pass for review.
-- Whether tiers should be exactly 5 questions each, or a different split — suggested and not objected to, but not explicitly reconfirmed.
-- Windows vs. WSL execution environment for Claude Code — not discussed; confirm early since it affects shell command syntax.
-- How far to pursue the "stretch" items (custom reranker comparison, semantic caching, full observability, P95 latency) is a matter of available time, not yet decided — treat as optional and lower priority than the core ablation/eval work.
+**Resolved** (kept for the record, do not reopen):
+- ~~The ~30 eval questions need writing.~~ Written and validated; 5 per tier confirmed.
+- ~~Windows vs. WSL.~~ **Native Windows.** PowerShell and Git Bash both available — each takes its own syntax. Use **absolute paths**; the working directory drifts between tool calls. Avoid nested quotes in `python -c` from PowerShell, it mangles them; put anything non-trivial in a script file.
+
+**Still open:**
+- **Nihal should review `eval_data/questions.json`** — Claude Code drafted it; a read-through is worthwhile before the harness locks around its schema.
+- **FY2025 supplies 21 of 49 gold spans.** A retriever biased toward the most recent year would score slightly high. Not distorting enough to pre-empt, but it is the first thing to rebalance if the ablation arms come out suspiciously flat.
+- How far to pursue the "stretch" items (custom reranker comparison, semantic caching, full observability, P95 latency) is a matter of available time — optional, lower priority than the core ablation/eval work.
+- Deployment path (Hugging Face Spaces leading candidate) — still deferred until the core system works.
