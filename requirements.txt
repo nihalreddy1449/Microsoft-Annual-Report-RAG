@@ -1,0 +1,41 @@
+# Microsoft Annual Report RAG - dependencies
+#
+# IMPORTANT - install torch FIRST, from PyTorch's CUDA 12.8 index:
+#
+#     pip install torch --index-url https://download.pytorch.org/whl/cu128
+#     pip install -r requirements.txt
+#
+# Why: the RTX 5050 is Blackwell (compute capability sm_120). The default
+# PyPI torch wheel may ship without sm_120 kernels - it installs cleanly and
+# reports cuda.is_available() == True, then fails on the first real operation
+# with "no kernel image is available for execution on the device". The cu128
+# build is the one that actually carries Blackwell kernels.
+# Verify with: python scripts/check_env.py
+
+# ---- Step 3: ingestion / parsing ----
+unstructured[docx]>=0.16
+lxml>=5.0
+
+# ---- Steps 5-6: embeddings + vector store ----
+# sentence-transformers serves both bge-base-en-v1.5 (embeddings)
+# and bge-reranker-base (cross-encoder reranking, step 8).
+sentence-transformers>=3.0
+transformers>=4.44
+chromadb>=0.5
+
+# ---- Step 7: sparse retrieval ----
+rank_bm25>=0.2.2
+
+# ---- Step 9: generation ----
+groq>=0.11
+python-dotenv>=1.0
+
+# ---- Step 11: evaluation harness ----
+numpy>=1.26
+pandas>=2.2
+
+# ---- Step 13: interface ----
+gradio>=4.44
+
+# ---- utilities ----
+tqdm>=4.66
