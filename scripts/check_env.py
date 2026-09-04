@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import platform
 import sys
+from importlib import metadata
 
 OK, FAIL, WARN = "[ OK ]", "[FAIL]", "[WARN]"
 
@@ -63,28 +64,41 @@ def check_torch() -> bool:
 
 
 def check_imports() -> bool:
-    """Import each dependency we rely on, reporting version where available."""
+    """Import each dependency we rely on, reporting its installed version.
+
+    Import name and distribution name differ for several of these (dotenv ->
+    python-dotenv), so the version comes from package metadata rather than a
+    __version__ attribute. Some packages (unstructured) expose __version__ as
+    a submodule rather than a string, which is why the attribute is a fallback
+    only and is always coerced to str.
+    """
+    # (import name, distribution name, purpose)
     packages = [
-        ("unstructured", "docx parsing"),
-        ("sentence_transformers", "bge embeddings + reranker"),
-        ("transformers", "model backend"),
-        ("chromadb", "vector store"),
-        ("rank_bm25", "sparse retrieval"),
-        ("groq", "generation API"),
-        ("dotenv", "loads .env"),
-        ("numpy", "numerics"),
-        ("pandas", "results tables"),
-        ("gradio", "interface"),
+        ("unstructured", "unstructured", "docx parsing"),
+        ("sentence_transformers", "sentence-transformers", "bge embeddings + reranker"),
+        ("transformers", "transformers", "model backend"),
+        ("chromadb", "chromadb", "vector store"),
+        ("rank_bm25", "rank-bm25", "sparse retrieval"),
+        ("groq", "groq", "generation API"),
+        ("dotenv", "python-dotenv", "loads .env"),
+        ("numpy", "numpy", "numerics"),
+        ("pandas", "pandas", "results tables"),
+        ("gradio", "gradio", "interface"),
     ]
     all_ok = True
-    for module, purpose in packages:
+    for module, dist, purpose in packages:
         try:
             mod = importlib.import_module(module)
-            version = getattr(mod, "__version__", "?")
-            print(f"{OK} {module:<24} {version:<12} {purpose}")
         except ImportError:
             print(f"{FAIL} {module:<24} {'--':<12} {purpose} - not installed")
             all_ok = False
+            continue
+
+        try:
+            version = metadata.version(dist)
+        except metadata.PackageNotFoundError:
+            version = str(getattr(mod, "__version__", "?"))
+        print(f"{OK} {module:<24} {version:<12} {purpose}")
     return all_ok
 
 
