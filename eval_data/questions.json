@@ -1,0 +1,260 @@
+{
+  "schema_version": "1.0",
+  "corpus": "Microsoft Annual Report to Shareholders, FY2020-FY2025 (6 documents)",
+  "matching": "span_containment",
+  "matching_note": "recall@k is computed by checking whether any retrieved chunk contains any gold span (whitespace/case-normalized). Spans are verbatim from the source documents, so they survive re-chunking and stay comparable across fixed / structure-aware / semantic strategies.",
+  "corpus_caveat": "These are Annual Reports to Shareholders, not full Form 10-Ks. They contain the shareholder letter, BUSINESS, MD&A, financial statements and notes, but they do NOT contain an Item 1A Risk Factors section - they only cross-reference it. Do not write answerable questions about risk factors.",
+  "tiers": ["easy", "medium", "hard", "multi_document", "temporal", "unanswerable"],
+  "questions": [
+    {
+      "id": "E1", "tier": "easy", "answerable": true,
+      "question": "What was Microsoft's total revenue in fiscal year 2025?",
+      "gold_answer": "$281,724 million (about $281.7 billion), up 15% from FY2024.",
+      "gold_evidence": [
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "281,724"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "SHAREHOLDER_LETTER", "span": "Revenue was $281.7 billion, up 15 percent."}
+      ]
+    },
+    {
+      "id": "E2", "tier": "easy", "answerable": true,
+      "question": "How many people did Microsoft employ on a full-time basis as of June 30, 2025?",
+      "gold_answer": "Approximately 228,000 full-time employees - 125,000 in the U.S. and 103,000 internationally.",
+      "gold_evidence": [{"fy": 2025, "source": "2025_AnnualReport.docx", "section": "BUSINESS", "span": "we employed approximately 228,000 people on a full-time basis, 125,000 in the U.S. and 103,000 internationally"}],
+      "notes": "Sits in the BUSINESS section (HUMAN CAPITAL RESOURCES), not MD&A - deliberately pulls the eval set outside the financial tables."
+    },
+    {
+      "id": "E3", "tier": "easy", "answerable": true,
+      "question": "What was Microsoft's operating income in fiscal year 2022?",
+      "gold_answer": "$83,383 million, up 19% from FY2021.",
+      "gold_evidence": [{"fy": 2022, "source": "2022_Annual_Report.docx", "section": "MDA", "span": "83,383"}]
+    },
+    {
+      "id": "E4", "tier": "easy", "answerable": true,
+      "question": "By how much did research and development expenses increase in fiscal year 2023?",
+      "gold_answer": "They increased $2.7 billion, or 11%, driven by investments in cloud engineering and LinkedIn.",
+      "gold_evidence": [{"fy": 2023, "source": "2023_Annual_Report.docx", "section": "MDA", "span": "Research and development expenses increased $2.7 billion or 11% driven by investments in cloud engineering and LinkedIn."}]
+    },
+    {
+      "id": "E5", "tier": "easy", "answerable": true,
+      "question": "What was Microsoft's net income in fiscal year 2021?",
+      "gold_answer": "$61,271 million, up 38% from FY2020.",
+      "gold_evidence": [{"fy": 2021, "source": "2021_Annual_Report.docx", "section": "MDA", "span": "61,271"}]
+    },
+
+    {
+      "id": "M1", "tier": "medium", "answerable": true,
+      "question": "What factors contributed to Microsoft's increase in operating income in fiscal year 2025?",
+      "gold_answer": "Operating income rose $19.1 billion or 17%, with growth across every segment: gross margin grew $22.9 billion or 13% while operating expenses rose only $3.8 billion or 6%.",
+      "gold_evidence": [
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Operating income increased $19.1 billion or 17% with growth across each of our segments."},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Operating expenses increased $3.8 billion or 6% driven by investments in cloud and AI engineering and Gaming, including the impact of the Activision Blizzard acquisition."}
+      ]
+    },
+    {
+      "id": "M2", "tier": "medium", "answerable": true,
+      "question": "Why did Microsoft's research and development expenses grow in fiscal year 2024?",
+      "gold_answer": "They rose $2.3 billion or 9%, driven by Gaming - with 7 points of growth from the Activision Blizzard acquisition - and investments in cloud engineering.",
+      "gold_evidence": [{"fy": 2024, "source": "2024_Annual_Report.docx", "section": "MDA", "span": "Research and development expenses increased $2.3 billion or 9% driven by Gaming, with 7 points of growth from the Activision Blizzard acquisition, and investments in cloud engineering."}]
+    },
+    {
+      "id": "M3", "tier": "medium", "answerable": true,
+      "question": "Why did Microsoft Cloud gross margin percentage decline in fiscal year 2025?",
+      "gold_answer": "It decreased to 69% because of the cost of scaling AI infrastructure, offset in part by efficiency gains in Azure.",
+      "gold_evidence": [{"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Microsoft Cloud gross margin percentage decreased to 69% driven by the impact of scaling our AI infrastructure, offset in part by efficiency gains in Azure."}]
+    },
+    {
+      "id": "M4", "tier": "medium", "answerable": true,
+      "question": "What drove More Personal Computing revenue growth in fiscal year 2025?",
+      "gold_answer": "Gaming, and Search and news advertising.",
+      "gold_evidence": [{"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "More Personal Computing revenue increased driven by Gaming and Search and news advertising."}]
+    },
+    {
+      "id": "M5", "tier": "medium", "answerable": true,
+      "question": "What drove the growth in server products and cloud services revenue in fiscal year 2022?",
+      "gold_answer": "It increased $14.7 billion or 28%, driven by Azure and other cloud services, which grew 45% on consumption-based services; server products revenue rose 5% on hybrid solutions.",
+      "gold_evidence": [{"fy": 2022, "source": "2022_Annual_Report.docx", "section": "MDA", "span": "Azure and other cloud services revenue grew 45% driven by growth in our consumption-based services."}]
+    },
+
+    {
+      "id": "H1", "tier": "hard", "answerable": true,
+      "question": "How did Microsoft's Intelligent Cloud revenue change between FY2024 and FY2025, and what were the primary drivers?",
+      "gold_answer": "Intelligent Cloud revenue grew from $87,464 million to $106,265 million, up 21%, driven by Azure; segment operating income rose from $37,813M to $44,589M.",
+      "gold_evidence": [
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "106,265"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "87,464"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Intelligent Cloud revenue increased driven by Azure."}
+      ]
+    },
+    {
+      "id": "H2", "tier": "hard", "answerable": true,
+      "question": "What is the total amount Microsoft has committed to fund OpenAI, and how is that investment accounted for?",
+      "gold_answer": "Total funding commitments of $13 billion to OpenAI Global, LLC. It is a variable interest entity of which Microsoft is not the primary beneficiary, so it is not consolidated and is accounted for under the equity method.",
+      "gold_evidence": [
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "NOTES", "span": "have made total funding commitments of $13 billion"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "NOTES", "span": "The investment is accounted for under the equity method of accounting."}
+      ],
+      "notes": "Buried in the VIE discussion inside NOTES TO FINANCIAL STATEMENTS - the largest section of the corpus and otherwise untested. Hard because the figure is nowhere near the MD&A narrative about the OpenAI partnership, which is the chunk a naive retriever will surface instead."
+    },
+    {
+      "id": "H3", "tier": "hard", "answerable": true,
+      "question": "What were Productivity and Business Processes revenue and operating income in FY2025, and how did operating income growth compare with revenue growth?",
+      "gold_answer": "Revenue $120,810M (up 13%) and operating income $69,773M (up 17%) - operating income grew faster than revenue, indicating margin expansion.",
+      "gold_evidence": [
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "120,810"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "69,773"}
+      ]
+    },
+    {
+      "id": "H4", "tier": "hard", "answerable": true,
+      "question": "In fiscal year 2023 Microsoft's revenue grew but net income fell. What were the figures?",
+      "gold_answer": "Revenue rose 7% to $211,915M while net income declined 1% to $72,361M (from $72,738M in FY2022); diluted EPS was roughly flat at $9.68.",
+      "gold_evidence": [
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "MDA", "span": "211,915"},
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "MDA", "span": "72,361"}
+      ]
+    },
+    {
+      "id": "H5", "tier": "hard", "answerable": true,
+      "question": "How did Azure and other cloud services growth change between FY2023 and FY2024, and what happened to overall server products and cloud services revenue?",
+      "gold_answer": "Azure and other cloud services growth rose from 29% in FY2023 to 30% in FY2024, while server products and cloud services revenue growth increased from 19% to 22%.",
+      "gold_evidence": [
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "MDA", "span": "Server products and cloud services revenue increased 19% driven by Azure and other cloud services growth of 29%."},
+        {"fy": 2024, "source": "2024_Annual_Report.docx", "section": "MDA", "span": "Server products and cloud services revenue increased 22% driven by Azure and other cloud services growth of 30%."}
+      ]
+    },
+
+    {
+      "id": "D1", "tier": "multi_document", "answerable": true,
+      "question": "How has Microsoft's AI strategy evolved between FY2023 and FY2025?",
+      "gold_answer": "FY2023 framed a new era of AI centred on the OpenAI partnership and Azure OpenAI Service; FY2024 expanded to Copilot across products; FY2025 centres on Cloud and AI infrastructure plus a family of Copilots and agents, with AI infrastructure scaling now visibly affecting cloud gross margin.",
+      "gold_evidence": [
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "SHAREHOLDER_LETTER", "span": "A NEW ERA OF AI"},
+        {"fy": 2024, "source": "2024_Annual_Report.docx", "section": "SHAREHOLDER_LETTER", "span": "AGE OF AI"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "SHAREHOLDER_LETTER", "span": "our Cloud and AI infrastructure, and our family of Copilots and agents"}
+      ]
+    },
+    {
+      "id": "D2", "tier": "multi_document", "answerable": true,
+      "question": "How did Microsoft describe its partnership with OpenAI in FY2023 and FY2024?",
+      "gold_answer": "In both years it described a long-term partnership, deploying OpenAI models across consumer and enterprise products, acting as OpenAI's exclusive cloud provider with Azure powering all OpenAI workloads, and increasing investment in specialized supercomputing systems.",
+      "gold_evidence": [
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "BUSINESS", "span": "exclusive cloud provider"},
+        {"fy": 2024, "source": "2024_Annual_Report.docx", "section": "BUSINESS", "span": "exclusive cloud provider"},
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "BUSINESS", "span": "long-term partnership with OpenAI"}
+      ]
+    },
+    {
+      "id": "D3", "tier": "multi_document", "answerable": true,
+      "question": "Trace Microsoft's year-over-year revenue growth rate from FY2020 through FY2025.",
+      "gold_answer": "FY2020 14%, FY2021 18%, FY2022 18%, FY2023 7%, FY2024 16%, FY2025 15%.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "MDA", "span": "143,015"},
+        {"fy": 2022, "source": "2022_Annual_Report.docx", "section": "MDA", "span": "Revenue increased $30.2 billion or 18% driven by growth across each of our segments."},
+        {"fy": 2024, "source": "2024_Annual_Report.docx", "section": "MDA", "span": "Revenue increased $33.2 billion or 16% driven by growth across each of our segments."},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Revenue increased $36.6 billion or 15% with growth across each of our segments."}
+      ]
+    },
+    {
+      "id": "D4", "tier": "multi_document", "answerable": true,
+      "question": "How did the stated drivers of More Personal Computing revenue change between FY2021, FY2022 and FY2025?",
+      "gold_answer": "FY2021 driven by Gaming; FY2022 by Search and news advertising and Windows; FY2025 by Gaming and Search and news advertising.",
+      "gold_evidence": [
+        {"fy": 2021, "source": "2021_Annual_Report.docx", "section": "MDA", "span": "More Personal Computing revenue increased driven by Gaming."},
+        {"fy": 2022, "source": "2022_Annual_Report.docx", "section": "MDA", "span": "More Personal Computing revenue increased driven by Search and news advertising and Windows."},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "More Personal Computing revenue increased driven by Gaming and Search and news advertising."}
+      ]
+    },
+    {
+      "id": "D5", "tier": "multi_document", "answerable": true,
+      "question": "How did the stated focus of Microsoft's research and development investment shift from FY2020 to FY2025?",
+      "gold_answer": "FY2020 cited cloud engineering, LinkedIn, Devices and Gaming; FY2022 cloud engineering, Gaming and LinkedIn; FY2025 cloud and AI engineering and Gaming including Activision Blizzard - showing a shift toward AI.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "MDA", "span": "Research and development expenses increased $2.4 billion or 14%, driven by investments in cloud engineering, LinkedIn, Devices, and Gaming."},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Research and development expenses increased $3.0 billion or 10% driven by investments in cloud and AI engineering and Gaming, including the impact of the Activision Blizzard acquisition."}
+      ]
+    },
+
+    {
+      "id": "T1", "tier": "temporal", "answerable": true,
+      "question": "What did Microsoft report about Azure growth in FY2020, and how does that compare with FY2025?",
+      "gold_answer": "FY2020 Azure revenue grew 56%; by FY2025 Azure and other cloud services grew 34% and Azure surpassed $75 billion in annual revenue for the first time - a lower growth rate on a far larger base.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "MDA", "span": "Azure growth of 56%"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "Azure and other cloud services revenue growth of 34%"}
+      ]
+    },
+    {
+      "id": "T2", "tier": "temporal", "answerable": true,
+      "question": "In which fiscal year did Microsoft first report that Azure surpassed $75 billion in revenue?",
+      "gold_answer": "FY2025.",
+      "gold_evidence": [{"fy": 2025, "source": "2025_AnnualReport.docx", "section": "SHAREHOLDER_LETTER", "span": "Azure surpassed $75 billion in revenue for the first time, up 34 percent"}]
+    },
+    {
+      "id": "T3", "tier": "temporal", "answerable": true,
+      "question": "How did Microsoft's Azure growth rate trend across FY2020, FY2021, FY2022 and FY2023?",
+      "gold_answer": "It declined steadily: 56% in FY2020, 50% in FY2021, 45% in FY2022, and 29% in FY2023.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "MDA", "span": "Azure growth of 56%"},
+        {"fy": 2021, "source": "2021_Annual_Report.docx", "section": "MDA", "span": "Azure growth of 50%"},
+        {"fy": 2022, "source": "2022_Annual_Report.docx", "section": "MDA", "span": "Azure and other cloud services growth of 45%"},
+        {"fy": 2023, "source": "2023_Annual_Report.docx", "section": "MDA", "span": "Azure and other cloud services growth of 29%"}
+      ],
+      "notes": "Also probes the FY2022 terminology change from 'Azure' to 'Azure and other cloud services' - a lexical shift that penalises pure vector search and rewards the BM25 half of hybrid retrieval."
+    },
+    {
+      "id": "T4", "tier": "temporal", "answerable": true,
+      "question": "In which fiscal years did Microsoft discuss COVID-19 as a distinct topic in its annual report, and when did it stop?",
+      "gold_answer": "COVID-19 appears as its own discussion in the FY2020 and FY2021 reports and is no longer a distinct topic from FY2022 onward.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "BUSINESS", "span": "COVID-19"},
+        {"fy": 2021, "source": "2021_Annual_Report.docx", "section": "BUSINESS", "span": "In March 2020, the World Health Organization declared the outbreak"}
+      ],
+      "notes": "Has a negative-evidence component: FY2022-FY2025 contain no COVID-19 section. The judge should accept an answer stating the topic disappears after FY2021."
+    },
+    {
+      "id": "T5", "tier": "temporal", "answerable": true,
+      "question": "How did Microsoft's diluted earnings per share change from FY2020 to FY2025?",
+      "gold_answer": "It rose from $5.76 in FY2020 to $13.64 in FY2025, roughly a 2.4x increase.",
+      "gold_evidence": [
+        {"fy": 2020, "source": "2020_Annual_Report.docx", "section": "MDA", "span": "5.76"},
+        {"fy": 2025, "source": "2025_AnnualReport.docx", "section": "MDA", "span": "13.64"}
+      ]
+    },
+
+    {
+      "id": "U1", "tier": "unanswerable", "answerable": false,
+      "question": "What percentage of Azure's FY2025 revenue came specifically from ChatGPT?",
+      "gold_answer": "REFUSE. Microsoft does not break out Azure revenue by individual customer or workload, and no such figure appears in these reports.",
+      "gold_evidence": [],
+      "notes": "Classic hallucination bait - a plausible-sounding metric that is never disclosed."
+    },
+    {
+      "id": "U2", "tier": "unanswerable", "answerable": false,
+      "question": "What was Microsoft's total revenue in fiscal year 2026?",
+      "gold_answer": "REFUSE. The corpus covers FY2020-FY2025 only; there is no FY2026 annual report.",
+      "gold_evidence": [],
+      "notes": "Out-of-range year. Tests that the system does not extrapolate from the FY2025 figures."
+    },
+    {
+      "id": "U3", "tier": "unanswerable", "answerable": false,
+      "question": "How much revenue did Microsoft Copilot generate in fiscal year 2025?",
+      "gold_answer": "REFUSE. Microsoft discusses Copilot extensively but never discloses Copilot-specific revenue; it is not a reported line item.",
+      "gold_evidence": [],
+      "notes": "Verified: no Copilot revenue figure anywhere in the corpus. Strong distractors exist - Copilot is mentioned throughout FY2023-FY2025, and a FY2024 table row reads 'Revenue from Office Consumer products and cloud services, including Microsoft 365 Consumer and Copilot Pro subscriptions', which a naive system may misread as a Copilot revenue figure. Tests refusal despite strong retrieval - the hardest refusal case in the set."
+    },
+    {
+      "id": "U4", "tier": "unanswerable", "answerable": false,
+      "question": "What risk factors did Microsoft identify in its FY2025 annual report?",
+      "gold_answer": "REFUSE / REDIRECT. These Annual Reports to Shareholders contain no Risk Factors section; they explicitly refer the reader to the Form 10-K.",
+      "gold_evidence": [],
+      "notes": "Verified: all six documents only cross-reference risk factors ('Refer to Risk Factors in our fiscal year 20XX Form 10-K'). An ideal answer refuses AND points to the 10-K."
+    },
+    {
+      "id": "U5", "tier": "unanswerable", "answerable": false,
+      "question": "What was Azure's operating margin in FY2025?",
+      "gold_answer": "REFUSE. Microsoft reports operating income at the segment level (Intelligent Cloud), not for Azure individually.",
+      "gold_evidence": [],
+      "notes": "Tests whether the system wrongly substitutes Intelligent Cloud segment margin for an Azure-specific figure."
+    }
+  ]
+}
