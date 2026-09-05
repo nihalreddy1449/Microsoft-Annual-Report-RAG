@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.embedding.embedder import Embedder  # noqa: E402
+from src.reranking.reranker import Reranker, RerankingRetriever  # noqa: E402
 from src.retrieval.bm25 import BM25Index  # noqa: E402
 from src.retrieval.hybrid import HybridRetriever  # noqa: E402
 from src.retrieval.vector_store import VectorStore  # noqa: E402
@@ -46,8 +47,13 @@ QUESTIONS = ROOT / "eval_data" / "questions.json"
 RESULTS = ROOT / "results"
 
 STRATEGIES = ["fixed", "structure_aware", "semantic"]
-RETRIEVERS = ["vector", "bm25", "hybrid"]
+RETRIEVERS = ["vector", "bm25", "hybrid", "hybrid+rerank"]
 K_VALUES = [1, 3, 5, 10]
+
+# The reranker reorders a shortlist; it cannot recover a chunk retrieval never
+# returned. The chunk answering E3 sat at rank 23 under hybrid retrieval, so a
+# shortlist of 10 would never have seen it. 40 reaches comfortably past that.
+RERANK_CANDIDATES = 40
 
 
 def normalise(text: str) -> str:
@@ -66,6 +72,7 @@ def main() -> int:
 
     embedder = Embedder()
     store = VectorStore(ROOT / "chroma_db", embedder=embedder)
+    reranker = Reranker()
 
     results: dict[str, dict[str, dict[int, dict[str, float]]]] = {}
 
@@ -74,6 +81,7 @@ def main() -> int:
         started = time.time()
         bm25 = BM25Index(chunks)
         hybrid = HybridRetriever(store, bm25, strategy)
+        reranking = RerankingRetriever(hybrid, reranker, candidates=RERANK_CANDIDATES)
         print(f"{strategy}: {len(chunks)} chunks, BM25 built in {time.time() - started:.1f}s",
               flush=True)
 
@@ -89,8 +97,10 @@ def main() -> int:
                     found = store.query(strategy, question["question"], k=max_k)
                 elif retriever == "bm25":
                     found = bm25.search(question["question"], k=max_k)
-                else:
+                elif retriever == "hybrid":
                     found = hybrid.search(question["question"], k=max_k)
+                else:
+                    found = reranking.search(question["question"], k=max_k)
 
                 texts = [normalise(h.text) for h in found]
                 spans = [normalise(g["span"]) for g in question["gold_evidence"]]
@@ -138,6 +148,45 @@ def main() -> int:
             print(f"{strategy:<18}{retriever:<12}{row}")
         print()
 
+    # ---- retrieval depth ----
+    # How far down hybrid retrieval you must look before the first gold span
+    # appears, taken over all questions. This is more stable than recall@k on
+    # 25 questions, where a single question moves the number four points, and
+    # it says something recall@k cannot: how much work the reranker is left to
+    # do. A strategy that surfaces every answer within the top 17 needs a far
+    # shallower - and cheaper - shortlist than one needing 69.
+    print("=" * 74)
+    print("retrieval depth  (deepest rank at which hybrid first finds a gold span)")
+    print("=" * 74)
+    depth_probe = 150
+    depths: dict[str, dict[str, int]] = {}
+    for strategy in STRATEGIES:
+        chunks = json.loads((PROCESSED / f"chunks_{strategy}.json").read_text(encoding="utf-8"))
+        hybrid = HybridRetriever(store, BM25Index(chunks), strategy)
+        worst = 0
+        unreachable = 0
+        first_ranks: list[int] = []
+        for question in answerable:
+            texts = [normalise(h.text) for h in hybrid.search(question["question"], k=depth_probe)]
+            best: int | None = None
+            for gold in question["gold_evidence"]:
+                span = normalise(gold["span"])
+                rank = next((i + 1 for i, t in enumerate(texts) if span in t), None)
+                if rank is not None and (best is None or rank < best):
+                    best = rank
+            if best is None:
+                unreachable += 1
+            else:
+                first_ranks.append(best)
+                worst = max(worst, best)
+        median = sorted(first_ranks)[len(first_ranks) // 2] if first_ranks else 0
+        depths[strategy] = {"deepest": worst, "median": median, "unreachable": unreachable}
+        print(
+            f"  {strategy:<18} deepest {worst:>3}   median {median:>3}   "
+            f"unreachable within {depth_probe}: {unreachable}"
+        )
+    print()
+
     RESULTS.mkdir(exist_ok=True)
     out = RESULTS / "retrieval_results.json"
     out.write_text(
@@ -146,7 +195,14 @@ def main() -> int:
                 "questions": len(answerable),
                 "gold_spans": total_spans,
                 "note": "retrieval only; no fiscal-year filter, which would leak the answer",
+                "rerank_candidates": RERANK_CANDIDATES,
+                "rerank_candidate_note": (
+                    "40 measured better than 60/80/100 on structure_aware "
+                    "(92% vs 88% recall@10): a deeper shortlist feeds the "
+                    "cross-encoder distractors faster than answers"
+                ),
                 "results": results,
+                "retrieval_depth": depths,
             },
             indent=2,
         ),

@@ -1,1 +1,1 @@
-"""bge-reranker-base cross-encoder reranking"""
+"""Cross-encoder reranking with bge-reranker-base."""
