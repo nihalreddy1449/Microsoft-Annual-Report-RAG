@@ -116,6 +116,60 @@ def _split_caption(columns: list[str]) -> tuple[str | None, list[str]]:
     return None, columns
 
 
+def linearize_table_parts(
+    rows: list[list[str]],
+    fiscal_year: int | None = None,
+    section: str | None = None,
+    max_chars: int = 900,
+) -> list[str]:
+    """Linearize a table, splitting into parts that each fit the embedder.
+
+    Decision 4 keeps tables atomic, but a long financial table exceeds
+    bge-base-en-v1.5's 512-token window and is silently truncated - measured
+    across the corpus, tables accounted for almost all oversized chunks and
+    4-7% of tokens were being cut away unembedded, in precisely the rows where
+    the numeric answers live.
+
+    Splitting at *row* boundaries preserves what decision 4 exists to protect:
+    a row is never severed from its value, and every part repeats the caption
+    and "Columns:" line so column attribution travels with the rows it
+    describes. What is given up is only that a very long table now occupies
+    more than one chunk, which costs nothing a reader or retriever depends on.
+    """
+    text = linearize_table(rows, fiscal_year, section)
+    if not text:
+        return []
+
+    lines = text.splitlines()
+    head = [ln for ln in lines if ln.startswith(("Table (", "Columns:")) or _CAPTION.match(ln)]
+    body = [ln for ln in lines if ln not in head]
+    if len(text) <= max_chars or not body:
+        return [text]
+
+    head_len = sum(len(h) + 1 for h in head)
+    parts: list[list[str]] = []
+    current: list[str] = []
+    size = head_len
+    for line in body:
+        if current and size + len(line) + 1 > max_chars:
+            parts.append(current)
+            current, size = [], head_len
+        current.append(line)
+        size += len(line) + 1
+    if current:
+        parts.append(current)
+
+    total = len(parts)
+    return [
+        "\n".join(
+            [head[0] + f" part {i + 1} of {total}" if head else f"part {i + 1} of {total}"]
+            + head[1:]
+            + chunk_lines
+        )
+        for i, chunk_lines in enumerate(parts)
+    ]
+
+
 def linearize_table(
     rows: list[list[str]],
     fiscal_year: int | None = None,

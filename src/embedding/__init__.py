@@ -1,1 +1,1 @@
-"""bge-base-en-v1.5 embedding wrapper"""
+"""bge-base-en-v1.5 embedding wrapper."""
