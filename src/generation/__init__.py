@@ -1,1 +1,1 @@
-"""Groq API wrapper with context-only prompting"""
+"""Groq-backed answer generation with context-only prompting."""
