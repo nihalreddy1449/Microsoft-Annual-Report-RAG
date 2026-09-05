@@ -1,1 +1,1 @@
-"""BM25 + Chroma vector search fused with RRF"""
+"""Retrieval: Chroma vector store, BM25, and RRF fusion."""
