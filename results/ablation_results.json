@@ -1,0 +1,96 @@
+{
+  "generator": "openai/gpt-oss-120b",
+  "judge": "qwen/qwen3.8-27b",
+  "questions": 30,
+  "note": "recall@5 is span containment; correctness/faithfulness/refusal are LLM-judged",
+  "rows": [
+    {
+      "label": "fixed + hybrid",
+      "config": {
+        "strategy": "fixed",
+        "use_bm25": true,
+        "use_reranker": false,
+        "top_k": 5,
+        "rerank_candidates": 40
+      },
+      "questions": 30,
+      "recall_at_k": 0.56,
+      "span_recall": 0.3673469387755102,
+      "correctness": 0.5416666666666666,
+      "faithfulness": 1.0,
+      "refusal_accuracy": 0.7,
+      "over_refusal_rate": 0.36,
+      "substantive_answers": 16,
+      "mean_latency_ms": 1488.8195117314656,
+      "total_tokens": 55853,
+      "judge_errors": 1,
+      "generation_errors": 0
+    },
+    {
+      "label": "structure_aware + hybrid",
+      "config": {
+        "strategy": "structure_aware",
+        "use_bm25": true,
+        "use_reranker": false,
+        "top_k": 5,
+        "rerank_candidates": 40
+      },
+      "questions": 30,
+      "recall_at_k": 0.64,
+      "span_recall": 0.46938775510204084,
+      "correctness": 0.58,
+      "faithfulness": 1.0,
+      "refusal_accuracy": 0.7333333333333333,
+      "over_refusal_rate": 0.32,
+      "substantive_answers": 17,
+      "mean_latency_ms": 2332.582894961039,
+      "total_tokens": 53690,
+      "judge_errors": 0,
+      "generation_errors": 0
+    },
+    {
+      "label": "semantic + hybrid",
+      "config": {
+        "strategy": "semantic",
+        "use_bm25": true,
+        "use_reranker": false,
+        "top_k": 5,
+        "rerank_candidates": 40
+      },
+      "questions": 30,
+      "recall_at_k": 0.6,
+      "span_recall": 0.4489795918367347,
+      "correctness": 0.5625,
+      "faithfulness": 1.0,
+      "refusal_accuracy": 0.7,
+      "over_refusal_rate": 0.32,
+      "substantive_answers": 17,
+      "mean_latency_ms": 1406.0309489568074,
+      "total_tokens": 53335,
+      "judge_errors": 1,
+      "generation_errors": 0
+    },
+    {
+      "label": "semantic + hybrid + rerank",
+      "config": {
+        "strategy": "semantic",
+        "use_bm25": true,
+        "use_reranker": true,
+        "top_k": 5,
+        "rerank_candidates": 40
+      },
+      "questions": 30,
+      "recall_at_k": 0.92,
+      "span_recall": 0.6530612244897959,
+      "correctness": 0.75,
+      "faithfulness": 1.0,
+      "refusal_accuracy": 0.8518518518518519,
+      "over_refusal_rate": 0.16,
+      "substantive_answers": 21,
+      "mean_latency_ms": 2027.9818455378215,
+      "total_tokens": 62742,
+      "judge_errors": 4,
+      "generation_errors": 0
+    }
+  ]
+}

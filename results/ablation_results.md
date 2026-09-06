@@ -116,3 +116,99 @@ Semantic chunking truncates 2.7% of its chunks at bge's 512-token limit, versus
 0.3–0.8% for the other arms. Small, but it is a real asymmetry rather than a
 hidden one, and it slightly understates semantic's numbers rather than
 inflating them.
+
+---
+
+# Generation ablation - the full ladder
+
+Retrieval, reranking and generation end to end, scored by an LLM judge.
+
+**Generator:** `openai/gpt-oss-120b` - **Judge:** `qwen/qwen3.8-27b`
+
+The judge is deliberately a different model family from the generator (locked
+decision 5). Self-preference bias is documented, and a generator grading its own
+output would undermine the whole measurement.
+
+> The planned `llama-3.3-70b-versatile` was used for neither: Groq no longer
+> serves it, or any Llama model. That decision was invalidated by availability
+> rather than reversed by preference.
+
+| configuration | recall@5 | correct | faithful | refusal | over-refusal | latency |
+|---|---:|---:|---:|---:|---:|---:|
+| fixed + hybrid | 56% | 54% | 100% | 70% | 36% | 1489 ms |
+| structure_aware + hybrid | 64% | 58% | 100% | 73% | 32% | 2333 ms |
+| semantic + hybrid | 60% | 56% | 100% | 70% | 32% | 1406 ms |
+| **semantic + hybrid + rerank** | **92%** | **75%** | **100%** | **85%** | **16%** | 2028 ms |
+
+- **correct** - LLM-judged against the gold answer, 0/1/2 scaled to a percentage
+- **faithful** - every claim supported by retrieved context, over *substantive*
+  answers only (16, 17, 17, 21 of 25). Refusals assert nothing and would
+  otherwise score a free 100%.
+- **over-refusal** - refused a question that *was* answerable. Lower is better.
+
+## What the numbers support
+
+**1. Reranking is the dominant effect, again.** Every metric moves together:
+recall@5 60% to 92%, correctness 56% to 75%, over-refusal 32% to 16%. It is
+worth more than any chunking choice, and the mechanism is visible in the
+over-refusal column: better context does not just improve answers, it converts
+refusals into answers.
+
+**2. The system fails safe.** Faithfulness is 100% in every configuration -
+across 71 substantive answers, the judge found no claim unsupported by the
+retrieved context. The generator has certainly read about Microsoft during
+training, so this is a real result about the context-only prompting rather than
+an accident. It is also the property that matters most: a wrong answer is
+recoverable, a confident fabrication is not.
+
+**3. Over-refusal is the real failure mode.** Even at its best the system
+declines 16% of answerable questions, and without reranking it declines about a
+third. That is the correct direction to fail in for a financial assistant, but
+it is where the remaining quality is lost.
+
+**4. Difficulty tiers behave as designed** (best configuration):
+
+| tier | correctness |
+|---|---:|
+| easy | 100% |
+| hard | 80% |
+| temporal | 80% |
+| medium | 70% |
+| multi_document | **38%** |
+
+Multi-document questions are by far the weakest, which is expected and honest:
+they need evidence from several fiscal years at once, and span recall@5 is 65%
+even in the best configuration. Retrieving one supporting span is not the same
+as retrieving all of them.
+
+## What the numbers do NOT support
+
+**Chunking strategy is not settled by this table.** The three chunkers score
+54%, 58% and 56% correctness - a spread of one question on a 25-question set,
+where one question is four percentage points. Structure-aware nominally leads,
+semantic led on retrieval depth, and fixed led on recall@10 after reranking in
+the retrieval-only measurement. These are inconsistent, which is itself the
+finding: at this corpus size the chunking choice is not the lever. Reranking is.
+
+**The best row's refusal score rests on two questions, not five.** Four judge
+calls errored during a network outage in that configuration, three of them on
+refusal questions (U1, U2, U4). Its 85% is computed from U3 and U5 plus the
+answerable half. It is not comparable to the other rows, which scored four or
+five. Errored calls are excluded from the means rather than scored zero - a
+failed API call is missing data, not a wrong answer - but exclusion cannot
+manufacture the evidence that was lost.
+
+**Latency is not a fair comparison.** These are wall-clock times against a
+shared free-tier endpoint, measured over an evening that included a network
+outage. They indicate the reranker's cost is not dominant; they do not support
+any finer claim.
+
+## Known limitations
+
+- 25 answerable questions is a small sample. One question is four points, and
+  differences below roughly 8 points should not be treated as real.
+- 6 judge calls errored in total and are excluded.
+- The risk-factors question (U4) is answered rather than refused in every
+  configuration, and the cross-reference it should quote sits at rank 3 in the
+  model's own context. That is a genuine, reproducible weakness, left measured
+  rather than tuned away.

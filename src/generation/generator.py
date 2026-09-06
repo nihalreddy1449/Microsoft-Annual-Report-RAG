@@ -131,8 +131,18 @@ class Generator:
         api_key: str | None = None,
         temperature: float = 0.0,
         max_tokens: int = 900,
+        # Sized for an unreliable connection rather than an ideal one. Measured
+        # here: 2 of 8 probes to the API failed, and the failures arrive in
+        # bursts lasting tens of seconds rather than as independent drops. Five
+        # retries span only ~60s of backoff, which a single burst outlasted and
+        # killed a run. Eight, with the wait capped at 60s, tolerates roughly
+        # four minutes of intermittent connectivity.
+        max_retries: int = 8,
+        backoff_cap: int = 60,
         env_path: str | Path | None = None,
     ) -> None:
+        self.max_retries = max_retries
+        self.backoff_cap = backoff_cap
         if api_key is None or model is None:
             from dotenv import load_dotenv
 
@@ -158,6 +168,43 @@ class Generator:
             self._client = Groq(api_key=self.api_key)
         return self._client
 
+    def _complete(self, question: str, context: str):
+        """One completion, retrying transient failures with backoff.
+
+        A full ablation is ~120 generation calls over roughly half an hour, so
+        transient failures are expected rather than exceptional. A dropped DNS
+        lookup killed a run at this exact point once, wasting a completed
+        configuration's worth of API calls, because retries had been given to
+        the judge and not to the generator.
+
+        Rate limits and connection errors are retried; an authentication or
+        bad-request failure is raised immediately, since repeating it would
+        only waste time and quota.
+        """
+        last: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {
+                            "role": "user",
+                            "content": f"Context:\n{context}\n\nQuestion: {question}",
+                        },
+                    ],
+                )
+            except Exception as exc:  # noqa: BLE001
+                name = type(exc).__name__
+                if any(fatal in name for fatal in ("Authentication", "PermissionDenied", "BadRequest")):
+                    raise
+                last = exc
+                if attempt < self.max_retries:
+                    time.sleep(min(2**attempt, self.backoff_cap))
+        raise RuntimeError(f"generation failed after {self.max_retries} attempts: {last}")
+
     def answer(self, question: str, hits: Sequence[Any]) -> Answer:
         """Answer a question from retrieved chunks."""
         if not hits:
@@ -166,15 +213,7 @@ class Generator:
 
         context, used = format_context(hits)
         started = time.time()
-        response = self.client.chat.completions.create(
-            model=self.model,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
-            ],
-        )
+        response = self._complete(question, context)
         latency = (time.time() - started) * 1000
 
         text = (response.choices[0].message.content or "").strip()
