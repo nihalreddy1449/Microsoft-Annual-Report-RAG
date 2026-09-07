@@ -209,11 +209,12 @@ def _rerank_info() -> str:
 
     Measured on this machine with the GPU disabled: ~15s per query warm, since
     the cross-encoder scores 40 question/chunk pairs one at a time through a
-    278M model. On GPU it is well under a second. Worth stating rather than
-    leaving the user to wonder whether the app has hung.
+    278M model. Worth stating rather than leaving the user to wonder whether
+    the app has hung. The GPU figure is not quoted because it was never timed
+    separately from generation.
     """
     if _device() == "cuda":
-        return "The single biggest quality gain. Sub-second on this GPU."
+        return "The single biggest quality gain, and the slowest retrieval step."
     return (
         "The single biggest quality gain, and the slow step on CPU "
         "(~15s/query here). Turn it off to see the difference - answers often "
