@@ -43,3 +43,6 @@ chroma_db/
 Thumbs.db
 desktop.ini
 !data/processed/.gitkeep
+
+# Personal notes - not part of the project, never publish
+RESUME_NOTES.md
